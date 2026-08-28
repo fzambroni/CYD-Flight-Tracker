@@ -79,9 +79,9 @@ light:
 display:
   - platform: mipi_spi
     id: cyd_display
-    # Dual-USB CYD variant with ST7789V. This preset supplies the correct
-    # controller address window and prevents the approximately 32 px blank strip.
-    model: ESP32-2432S028-7789
+    # Dual-USB CYD variant with ILI9342. This controller is natively 320x240,
+    # so the LVGL base rotation must remain 0 for the landscape layout below.
+    model: ESP32-2432S028-9342
     spi_id: tft_spi
     color_order: RGB
     invert_colors: false
@@ -247,10 +247,13 @@ number:
 select:
   - platform: template
     name: "Display Orientation"
-    id: display_orientation
+    # The v2 ID intentionally creates a fresh preference key so devices that
+    # previously stored the incorrect 90-degree value start at 0 degrees.
+    id: display_orientation_v2
     icon: mdi:screen-rotation
-    options: ["0", "90", "180", "270"]
-    initial_option: "90"
+    # The interface is landscape-only. 0 and 180 preserve its 320x240 viewport.
+    options: ["0", "180"]
+    initial_option: "0"
     optimistic: true
     restore_value: true
     entity_category: config
@@ -768,7 +771,7 @@ script:
     then:
       - lvgl.display.set_rotation:
           rotation: !lambda |-
-            return atoi(id(display_orientation).current_option().c_str());
+            return atoi(id(display_orientation_v2).current_option().c_str());
 
   - id: wake_display
     mode: restart
@@ -1309,7 +1312,8 @@ script:
 
 
 lvgl:
-  rotation: 90
+  # ILI9342 native geometry is already landscape (320x240).
+  rotation: 0
   displays:
     - cyd_display
   touchscreens:

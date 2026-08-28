@@ -2,7 +2,7 @@
 
 ## 1. Verify the hardware
 
-The supplied firmware is for the dual-USB ESP32-2432S028 CYD using ESPHome's `ESP32-2432S028-7789` ST7789V display model. Do not flash it unchanged to a different CYD revision. Photograph the board markings and back up an existing working configuration before changing hardware parameters.
+The supplied firmware is for the dual-USB ESP32-2432S028 CYD using ESPHome's `ESP32-2432S028-9342` ILI9342 display model. The controller is natively 320x240 and the supplied landscape layout therefore starts at 0° LVGL rotation. Do not flash it unchanged to a different CYD revision. Photograph the board markings and back up an existing working configuration before changing hardware parameters.
 
 You also need a data-capable USB cable, a 2.4 GHz Wi-Fi network, Home Assistant, ESPHome, and a configured Flightradar24 integration.
 

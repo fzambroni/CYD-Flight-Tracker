@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented here. The format follows Keep a Changelog, and the project intends to use Semantic Versioning.
 
+## [0.1.2] - 2026-08-28
+
+### Fixed
+
+- Restored the correct ILI9342 controller profile and RGB color behavior.
+- Changed the base LVGL orientation from 90° to 0° because ILI9342 is natively 320x240.
+- Migrated the orientation preference key so an old saved 90° value cannot reapply the clipped 240x320 viewport after updating.
+
 ## [0.1.1] - 2026-08-28
 
 ### Fixed

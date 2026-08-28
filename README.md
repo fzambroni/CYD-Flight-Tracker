@@ -25,11 +25,11 @@ The display does not contact Flightradar24 directly. Home Assistant obtains the 
 
 ## Supported hardware
 
-The included firmware targets the **ESP32-2432S028 dual-USB CYD with an ST7789V display**, selected in ESPHome as `ESP32-2432S028-7789`. It uses a 320x240 landscape interface and XPT2046 touchscreen. Other CYD revisions—including ILI9341 and ILI9342 variants—require a different display model and may also require different GPIO assignments, color order, or touch calibration.
+The included firmware targets the **ESP32-2432S028 dual-USB CYD with an ILI9342 display**, selected in ESPHome as `ESP32-2432S028-9342`. The ILI9342 profile is natively 320x240, so the landscape interface uses a base LVGL rotation of 0°. Other CYD revisions—including ILI9341 and ST7789V variants—require a different display model and may also require different GPIO assignments, color order, or touch calibration.
 
 ## Requirements
 
-- A supported dual-USB ESP32-2432S028-7789 CYD and a data-capable USB cable
+- A supported dual-USB ESP32-2432S028-9342 CYD and a data-capable USB cable
 - Home Assistant with the ESPHome integration
 - ESPHome capable of the `mipi_spi`, LVGL, and runtime display-rotation features used by the YAML
 - Home Assistant's Flightradar24 integration configured so `sensor.flightradar24_current_in_area` exists and exposes a `flights` attribute

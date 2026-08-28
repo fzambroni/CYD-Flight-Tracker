@@ -24,7 +24,7 @@ These ESPHome entities are exposed to Home Assistant. Entity IDs normally use th
 | Night Start/End Hour | Number | Night-mode schedule |
 | Auto Cycle Interval | Number | Delay between automatic page changes |
 | Nearby Rows | Number | Visible list rows, 1–6 |
-| Display Orientation | Select | 0°, 90°, 180°, or 270° |
+| Display Orientation | Select | 0° or 180° (landscape) |
 | Default Page / Current Page | Select | Startup target and immediate navigation |
 | Accent Theme / Surface Theme | Select | Prepared color presets |
 | Table Font Size | Select | Tiny, Small, or Medium preset |
@@ -51,7 +51,7 @@ The following changes require validation, compilation, and installation:
 - adding fonts, themes, pages, widgets, sensors, or new behavior
 - changing the hard-coded splash text or developer credit
 
-Although orientation is a runtime select in this firmware, the display/rotation capability itself must remain enabled and supported by the installed ESPHome version.
+Orientation remains runtime-configurable between the two landscape directions, 0° and 180°. Portrait orientations are intentionally excluded because this interface uses fixed 320x240 widget geometry and does not contain a responsive portrait layout.
 
 ## Suggested Home Assistant dashboard
 
@@ -65,7 +65,7 @@ The Home Assistant template file was opened in ESPHome. Use `esphome/cyd-flight-
 
 ### The display has wrong colors, corruption, or no image
 
-Confirm the board is the ST7789V dual-USB variant. A black strip of roughly 30–32 pixels combined with clipping on the opposite edge usually indicates the wrong controller preset, not an LVGL margin problem. ILI9341 and ILI9342 variants need their corresponding display model. Do not randomly change GPIOs while powered. Restore a known-good board configuration and validate again.
+Confirm the board is the ILI9342 dual-USB variant. This controller is natively 320x240; applying a 90° base LVGL rotation while using 320x240 widgets creates a portrait logical viewport, clipping content and leaving an unused strip. Keep the supplied 0° base orientation for landscape. ILI9341 and ST7789V variants need their corresponding display model. Do not randomly change GPIOs while powered.
 
 ### The image or touch is rotated/mirrored
 
