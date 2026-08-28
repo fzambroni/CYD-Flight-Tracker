@@ -65,7 +65,7 @@ The Home Assistant template file was opened in ESPHome. Use `esphome/cyd-flight-
 
 ### The display has wrong colors, corruption, or no image
 
-Confirm the board is the ILI9342-compatible dual-USB variant. Other variants need a different model or low-level settings. Do not randomly change GPIOs while powered. Restore a known-good board configuration and validate again.
+Confirm the board is the ST7789V dual-USB variant. A black strip of roughly 30–32 pixels combined with clipping on the opposite edge usually indicates the wrong controller preset, not an LVGL margin problem. ILI9341 and ILI9342 variants need their corresponding display model. Do not randomly change GPIOs while powered. Restore a known-good board configuration and validate again.
 
 ### The image or touch is rotated/mirrored
 
@@ -94,4 +94,3 @@ Wait briefly after changing a control before power loss. If the problem continue
 - Aircraft type, route, altitude, and speed may be absent.
 - This is not a certified aviation instrument.
 - Upstream integrations, APIs, attributes, service terms, and ESPHome components may change.
-

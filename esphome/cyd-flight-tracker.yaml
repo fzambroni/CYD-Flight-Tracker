@@ -79,7 +79,9 @@ light:
 display:
   - platform: mipi_spi
     id: cyd_display
-    model: ESP32-2432S028-9342
+    # Dual-USB CYD variant with ST7789V. This preset supplies the correct
+    # controller address window and prevents the approximately 32 px blank strip.
+    model: ESP32-2432S028-7789
     spi_id: tft_spi
     color_order: RGB
     invert_colors: false
@@ -1906,4 +1908,3 @@ interval:
                   last_cycle = millis();
                   id(next_page).execute();
                 }
-

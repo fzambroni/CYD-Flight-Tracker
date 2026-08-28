@@ -2,7 +2,7 @@
 
 ## 1. Verify the hardware
 
-The supplied firmware is for the dual-USB ESP32-2432S028 CYD using ESPHome's `ESP32-2432S028-9342` display model. Do not flash it unchanged to a different CYD revision. Photograph the board markings and back up an existing working configuration before changing hardware parameters.
+The supplied firmware is for the dual-USB ESP32-2432S028 CYD using ESPHome's `ESP32-2432S028-7789` ST7789V display model. Do not flash it unchanged to a different CYD revision. Photograph the board markings and back up an existing working configuration before changing hardware parameters.
 
 You also need a data-capable USB cable, a 2.4 GHz Wi-Fi network, Home Assistant, ESPHome, and a configured Flightradar24 integration.
 
@@ -79,4 +79,3 @@ The fallback access point is named `CYD Flight Tracker`. Its sample password is 
 ## Updating
 
 Read `CHANGELOG.md`, back up your working YAML, validate the new version, then install over the air. Use USB recovery if an OTA update changes network, API, display, or low-level board configuration incorrectly.
-
