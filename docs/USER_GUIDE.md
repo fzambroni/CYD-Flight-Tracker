@@ -10,6 +10,16 @@
 
 There are no visible navigation buttons. Tap anywhere on Nearby to open Nearest; tap anywhere on Nearest to return to Nearby. A touch also wakes a dimmed display.
 
+## Service unavailable page
+
+When the ESPHome native API reports that its specifically identified Home Assistant client has disconnected, the display automatically shows a diagnostic page with three independent indicators:
+
+- **Wi-Fi** — whether the CYD is connected to the configured access point.
+- **Internet** — whether the configured external connectivity endpoint responded successfully.
+- **Home Assistant** — whether a native API client identifying itself as Home Assistant is connected. ESPHome log and OTA clients do not count as Home Assistant.
+
+This distinction helps identify a Wi-Fi problem, an internet/upstream-service problem, or a Home Assistant/API problem. The flight interface returns automatically when Home Assistant reconnects. The internet test runs at boot and every 30 seconds. Its URL is the compile-time `internet_check_url` substitution in the ESPHome YAML; changing it requires recompilation.
+
 ## Runtime controls and recompilation
 
 These ESPHome entities are exposed to Home Assistant. Entity IDs normally use the `cyd_flight_tracker` prefix, but Home Assistant may adjust them if a name already exists.
@@ -82,6 +92,10 @@ The upstream flight record did not include that field, or an integration schema 
 ### The device is offline
 
 Confirm 2.4 GHz Wi-Fi availability, credentials, DHCP, and Home Assistant reachability. Use the fallback access point or USB logs for recovery. Avoid posting logs without removing SSIDs, IP addresses, and identifiers.
+
+### Internet is reported unavailable even though browsing works
+
+The configured connectivity endpoint may be blocked by DNS filtering, a firewall, captive portal, or regional policy. Replace `internet_check_url` with a permitted lightweight endpoint and recompile. A successful connectivity check does not guarantee that Flightradar24 itself is reachable.
 
 ### Controls do not retain values
 

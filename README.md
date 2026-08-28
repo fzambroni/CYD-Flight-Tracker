@@ -7,6 +7,8 @@ It provides two touch pages:
 - **Nearby** — up to six aircraft with flight/callsign, aircraft type, route, and distance.
 - **Nearest** — the closest aircraft with distance, altitude, and ground speed.
 
+An automatic **Service Unavailable** page replaces the flight pages whenever the native API client identifying itself as Home Assistant disconnects. It reports Wi-Fi, internet, and Home Assistant status independently, ignores unrelated log/OTA clients, and closes when Home Assistant returns.
+
 Tap anywhere on either page to switch pages. At startup, an optional splash screen displays **CYD Flight Tracker** and **Dev. By Fabricio Zambroni**; tapping it skips the delay.
 
 ## Architecture
@@ -72,7 +74,7 @@ Recompile when changing hardware-dependent or structural configuration: board/di
 
 ## Privacy and network behavior
 
-The CYD connects to the configured Wi-Fi network and communicates with Home Assistant over the ESPHome native API. The firmware contains no direct third-party HTTP client. Home Assistant's Flightradar24 integration may communicate with third-party services according to that integration's implementation and configuration. Logs and entity states can expose nearby aircraft data and local network details; share diagnostics carefully.
+The CYD connects to the configured Wi-Fi network and communicates with Home Assistant over the ESPHome native API. To distinguish a local Home Assistant outage from a general internet outage, the firmware sends an HTTP connectivity check every 30 seconds to the compile-time `internet_check_url` substitution. Its default is Google's `connectivitycheck.gstatic.com/generate_204`; users may replace it with another lightweight endpoint or a self-hosted URL before compiling. Home Assistant's Flightradar24 integration may also communicate with third-party services according to that integration's implementation and configuration. Logs and entity states can expose nearby aircraft data and local network details; share diagnostics carefully.
 
 ## Status and limitations
 

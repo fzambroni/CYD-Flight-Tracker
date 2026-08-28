@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented here. The format follows Keep a Changelog, and the project intends to use Semantic Versioning.
 
+## [0.2.9] - 2026-08-28
+
+### Fixed
+
+- Removed lambda actions adjacent to `binary_sensor.is_on` conditions in the connectivity scripts, preventing the target validator from merging them into one condition item.
+- Internet status text is now assigned explicitly in the available/unavailable branches.
+
+## [0.2.8] - 2026-08-28
+
+### Fixed
+
+- Removed the conditional recovery script that caused the target ESPHome validator to combine `condition` and `script.execute` into one action.
+- Connectivity state transitions now use template binary-sensor `on_press` triggers for showing and dismissing the unavailable page.
+
+## [0.2.7] - 2026-08-28
+
+### Fixed
+
+- Removed unsupported `update_interval` options from template binary sensors for compatibility with the target ESPHome version.
+
+## [0.2.6] - 2026-08-28
+
+### Fixed
+
+- Moved the connectivity recovery condition into a separate script so `update_connectivity_page` contains only one top-level `if`, avoiding another duplicate-key validation error in the target ESPHome editor.
+
+## [0.2.5] - 2026-08-28
+
+### Fixed
+
+- Replaced repeated `binary_sensor.is_on` entries inside `and` conditions with single composite internal status sensors, avoiding duplicate-key errors from the target ESPHome YAML validator.
+
+## [0.2.4] - 2026-08-28
+
+### Fixed
+
+- Replaced all lambda conditions in the connectivity-page decision block with internal template binary sensors and `binary_sensor.is_on/is_off` conditions for compatibility with stricter ESPHome YAML validation.
+
+## [0.2.3] - 2026-08-28
+
+### Fixed
+
+- Flattened the connectivity-page conditions to avoid a duplicate-key validation error in ESPHome versions that reject nested lambda conditions in this automation block.
+
+## [0.2.2] - 2026-08-28
+
+### Fixed
+
+- Replaced the generic API connection count with explicit Home Assistant client connect/disconnect tracking.
+- ESPHome log, dashboard, and OTA connections no longer prevent the Service Unavailable page from appearing when Home Assistant is offline.
+
+## [0.2.1] - 2026-08-28
+
+### Fixed
+
+- Updated the Home Assistant API connection check to use the zero-argument `APIServer::is_connected()` method supported by the target ESPHome build.
+- Changed the dynamic internet-status label lambda to return `std::string`, as required by the LVGL label update action.
+
+## [0.2.0] - 2026-08-28
+
+### Added
+
+- Added an automatic Service Unavailable page with separate Wi-Fi, internet, and Home Assistant connection indicators.
+- Added a configurable compile-time internet connectivity endpoint, checked at boot and every 30 seconds.
+- Added automatic return to the configured flight page when Home Assistant reconnects.
+
 ## [0.1.4] - 2026-08-28
 
 ### Added
