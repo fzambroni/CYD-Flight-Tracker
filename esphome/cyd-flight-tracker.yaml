@@ -1,0 +1,1909 @@
+substitutions:
+  device_name: "cyd-flight-tracker"
+  friendly_name: "CYD Flight Tracker"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - delay: 1s
+      - script.execute: apply_orientation
+      - script.execute: apply_surface_theme
+      - script.execute: apply_accent_theme
+      - script.execute: apply_table_font
+      - script.execute: apply_visibility
+      - script.execute: refresh_distance_labels
+      - script.execute: refresh_nearest_metrics
+      - script.execute: wake_display
+      - if:
+          condition:
+            switch.is_on: show_splash
+          then:
+            - lvgl.page.show:
+                id: splash_page
+            - delay: !lambda |-
+                uint32_t ms = (uint32_t) (id(splash_duration).state * 1000.0f);
+                if (ms < 500) ms = 500;
+                return ms;
+      - script.execute: show_default_page
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "CYD Flight Tracker"
+    password: "cydflight123"
+
+captive_portal:
+
+spi:
+  - id: tft_spi
+    clk_pin: GPIO14
+    mosi_pin: GPIO13
+    miso_pin:
+      number: GPIO12
+      ignore_strapping_warning: true
+
+  - id: touch_spi
+    clk_pin: GPIO25
+    mosi_pin: GPIO32
+    miso_pin: GPIO39
+
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: backlight_pwm
+
+light:
+  - platform: monochromatic
+    id: backlight
+    name: "Display Backlight"
+    output: backlight_pwm
+    restore_mode: ALWAYS_ON
+    internal: true
+
+display:
+  - platform: mipi_spi
+    id: cyd_display
+    model: ESP32-2432S028-9342
+    spi_id: tft_spi
+    color_order: RGB
+    invert_colors: false
+    color_depth: 16
+    auto_clear_enabled: false
+    update_interval: never
+
+touchscreen:
+  - platform: xpt2046
+    id: cyd_touch
+    spi_id: touch_spi
+    cs_pin: GPIO33
+    interrupt_pin: GPIO36
+    update_interval: 50ms
+    threshold: 400
+    calibration:
+      x_min: 280
+      x_max: 3860
+      y_min: 340
+      y_max: 3860
+    transform:
+      mirror_x: true
+      mirror_y: false
+      swap_xy: false
+    on_touch:
+      then:
+        - script.execute: wake_display
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+globals:
+  - id: last_touch_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+
+  - id: display_dimmed
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+number:
+  - platform: template
+    name: "Display Brightness"
+    id: display_brightness
+    icon: mdi:brightness-6
+    unit_of_measurement: "%"
+    min_value: 5
+    max_value: 100
+    step: 5
+    initial_value: 75
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: wake_display
+
+  - platform: template
+    name: "Splash Duration"
+    id: splash_duration
+    icon: mdi:timer-outline
+    unit_of_measurement: "s"
+    min_value: 1
+    max_value: 10
+    step: 0.5
+    initial_value: 3
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Auto Dim Timeout"
+    id: auto_dim_timeout
+    icon: mdi:timer-sand
+    unit_of_measurement: "s"
+    min_value: 10
+    max_value: 600
+    step: 10
+    initial_value: 60
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Dim Brightness"
+    id: dim_brightness
+    icon: mdi:brightness-5
+    unit_of_measurement: "%"
+    min_value: 1
+    max_value: 60
+    step: 1
+    initial_value: 20
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Night Brightness"
+    id: night_brightness
+    icon: mdi:weather-night
+    unit_of_measurement: "%"
+    min_value: 1
+    max_value: 40
+    step: 1
+    initial_value: 8
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Night Start Hour"
+    id: night_start_hour
+    icon: mdi:clock-start
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 22
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Night End Hour"
+    id: night_end_hour
+    icon: mdi:clock-end
+    min_value: 0
+    max_value: 23
+    step: 1
+    initial_value: 7
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Auto Cycle Interval"
+    id: auto_cycle_interval
+    icon: mdi:timer-outline
+    unit_of_measurement: "s"
+    min_value: 5
+    max_value: 120
+    step: 5
+    initial_value: 20
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Nearby Rows"
+    id: nearby_rows
+    icon: mdi:format-list-numbered
+    min_value: 1
+    max_value: 6
+    step: 1
+    initial_value: 6
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: apply_visibility
+
+select:
+  - platform: template
+    name: "Display Orientation"
+    id: display_orientation
+    icon: mdi:screen-rotation
+    options: ["0", "90", "180", "270"]
+    initial_option: "90"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: apply_orientation
+
+  - platform: template
+    name: "Default Page"
+    id: default_page
+    icon: mdi:view-list
+    options: ["Nearby", "Nearest"]
+    initial_option: "Nearby"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+
+  - platform: template
+    name: "Current Page"
+    id: current_page
+    icon: mdi:page-layout-body
+    options: ["Nearby", "Nearest"]
+    initial_option: "Nearby"
+    optimistic: true
+    restore_value: false
+    entity_category: config
+    on_value:
+      - if:
+          condition:
+            lambda: 'return x == "Nearby";'
+          then:
+            - lvgl.page.show:
+                id: nearby_page
+      - if:
+          condition:
+            lambda: 'return x == "Nearest";'
+          then:
+            - lvgl.page.show:
+                id: nearest_page
+
+  - platform: template
+    name: "Accent Theme"
+    id: accent_theme
+    icon: mdi:palette
+    options: ["Neutral", "Blue", "Green", "Amber", "Red"]
+    initial_option: "Blue"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: apply_accent_theme
+
+  - platform: template
+    name: "Surface Theme"
+    id: surface_theme
+    icon: mdi:theme-light-dark
+    options: ["Black", "Charcoal", "Slate"]
+    initial_option: "Black"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: apply_surface_theme
+
+  - platform: template
+    name: "Table Font Size"
+    id: table_font_size
+    icon: mdi:format-size
+    options: ["Tiny", "Small", "Medium"]
+    initial_option: "Small"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: apply_table_font
+
+  - platform: template
+    name: "Distance Unit"
+    id: distance_unit
+    icon: mdi:ruler
+    options: ["Miles", "Nautical Miles", "Kilometers"]
+    initial_option: "Miles"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: template
+    name: "Altitude Unit"
+    id: altitude_unit
+    icon: mdi:altimeter
+    options: ["Feet", "Meters"]
+    initial_option: "Feet"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: refresh_nearest_metrics
+
+  - platform: template
+    name: "Speed Unit"
+    id: speed_unit
+    icon: mdi:speedometer
+    options: ["Knots", "MPH", "KMH"]
+    initial_option: "Knots"
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    on_value:
+      - script.execute: refresh_nearest_metrics
+
+switch:
+  - platform: template
+    name: "Show Splash Screen"
+    id: show_splash
+    icon: mdi:monitor-star
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+
+  - platform: template
+    name: "Display Enabled"
+    id: display_enabled
+    icon: mdi:monitor
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: wake_display
+    on_turn_off:
+      - light.turn_off: backlight
+
+  - platform: template
+    name: "Auto Dim"
+    id: auto_dim
+    icon: mdi:brightness-auto
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_off:
+      - script.execute: wake_display
+
+  - platform: template
+    name: "Night Mode"
+    id: night_mode
+    icon: mdi:weather-night
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+
+  - platform: template
+    name: "Auto Cycle"
+    id: auto_cycle
+    icon: mdi:autorenew
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
+
+  - platform: template
+    name: "Show Column Header"
+    id: show_column_header
+    icon: mdi:table-headers-eye
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: apply_visibility
+    on_turn_off:
+      - script.execute: apply_visibility
+
+  - platform: template
+    name: "Show Aircraft Count"
+    id: show_aircraft_count
+    icon: mdi:counter
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: apply_visibility
+    on_turn_off:
+      - script.execute: apply_visibility
+
+  - platform: template
+    name: "Show Type Column"
+    id: show_type
+    icon: mdi:airplane-cog
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: apply_visibility
+    on_turn_off:
+      - script.execute: apply_visibility
+
+  - platform: template
+    name: "Show Route Column"
+    id: show_route
+    icon: mdi:map-marker-path
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: apply_visibility
+    on_turn_off:
+      - script.execute: apply_visibility
+
+  - platform: template
+    name: "Show Distance Column"
+    id: show_distance
+    icon: mdi:map-marker-distance
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: apply_visibility
+    on_turn_off:
+      - script.execute: apply_visibility
+
+button:
+  - platform: template
+    name: "Next Page"
+    icon: mdi:page-next-outline
+    entity_category: config
+    on_press:
+      - script.execute: next_page
+
+  - platform: template
+    name: "Return to Default Page"
+    icon: mdi:home-import-outline
+    entity_category: config
+    on_press:
+      - script.execute: show_default_page
+
+  - platform: template
+    name: "Wake Display"
+    icon: mdi:monitor
+    entity_category: config
+    on_press:
+      - script.execute: wake_display
+
+  - platform: restart
+    name: "Restart Device"
+    entity_category: diagnostic
+
+sensor:
+  - platform: homeassistant
+    id: aircraft_count
+    entity_id: sensor.fr24_cyd_aircraft_count
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: aircraft_count_label
+          text:
+            format: "%.0f"
+            args: [x]
+
+  - platform: homeassistant
+    id: nearest_distance_km
+    entity_id: sensor.fr24_cyd_nearest_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: nearest_altitude_ft
+    entity_id: sensor.fr24_cyd_nearest_altitude_ft
+    internal: true
+    on_value:
+      - script.execute: refresh_nearest_metrics
+
+  - platform: homeassistant
+    id: nearest_speed_kt
+    entity_id: sensor.fr24_cyd_nearest_speed_kt
+    internal: true
+    on_value:
+      - script.execute: refresh_nearest_metrics
+
+  - platform: homeassistant
+    id: row_1_distance_km
+    entity_id: sensor.fr24_cyd_row_1_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: row_2_distance_km
+    entity_id: sensor.fr24_cyd_row_2_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: row_3_distance_km
+    entity_id: sensor.fr24_cyd_row_3_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: row_4_distance_km
+    entity_id: sensor.fr24_cyd_row_4_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: row_5_distance_km
+    entity_id: sensor.fr24_cyd_row_5_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+  - platform: homeassistant
+    id: row_6_distance_km
+    entity_id: sensor.fr24_cyd_row_6_distance_km
+    internal: true
+    on_value:
+      - script.execute: refresh_distance_labels
+
+
+text_sensor:
+  - platform: homeassistant
+    id: nearest_flight
+    entity_id: sensor.fr24_cyd_nearest_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: nearest_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: nearest_type
+    entity_id: sensor.fr24_cyd_nearest_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: nearest_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: nearest_route
+    entity_id: sensor.fr24_cyd_nearest_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: nearest_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_1_flight
+    entity_id: sensor.fr24_cyd_row_1_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_1_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_1_type
+    entity_id: sensor.fr24_cyd_row_1_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_1_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_1_route
+    entity_id: sensor.fr24_cyd_row_1_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_1_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_2_flight
+    entity_id: sensor.fr24_cyd_row_2_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_2_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_2_type
+    entity_id: sensor.fr24_cyd_row_2_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_2_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_2_route
+    entity_id: sensor.fr24_cyd_row_2_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_2_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_3_flight
+    entity_id: sensor.fr24_cyd_row_3_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_3_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_3_type
+    entity_id: sensor.fr24_cyd_row_3_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_3_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_3_route
+    entity_id: sensor.fr24_cyd_row_3_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_3_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_4_flight
+    entity_id: sensor.fr24_cyd_row_4_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_4_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_4_type
+    entity_id: sensor.fr24_cyd_row_4_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_4_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_4_route
+    entity_id: sensor.fr24_cyd_row_4_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_4_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_5_flight
+    entity_id: sensor.fr24_cyd_row_5_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_5_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_5_type
+    entity_id: sensor.fr24_cyd_row_5_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_5_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_5_route
+    entity_id: sensor.fr24_cyd_row_5_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_5_route_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_6_flight
+    entity_id: sensor.fr24_cyd_row_6_flight
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_6_flight_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_6_type
+    entity_id: sensor.fr24_cyd_row_6_type
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_6_type_label
+          text: !lambda return x;
+
+  - platform: homeassistant
+    id: row_6_route
+    entity_id: sensor.fr24_cyd_row_6_route
+    internal: true
+    on_value:
+      - lvgl.label.update:
+          id: row_6_route_label
+          text: !lambda return x;
+
+
+script:
+  - id: apply_orientation
+    mode: restart
+    then:
+      - lvgl.display.set_rotation:
+          rotation: !lambda |-
+            return atoi(id(display_orientation).current_option().c_str());
+
+  - id: wake_display
+    mode: restart
+    then:
+      - lambda: |-
+          id(last_touch_ms) = millis();
+          id(display_dimmed) = false;
+      - if:
+          condition:
+            switch.is_on: display_enabled
+          then:
+            - light.turn_on:
+                id: backlight
+                brightness: !lambda |-
+                  float value = id(display_brightness).state / 100.0f;
+                  if (value < 0.01f) value = 0.01f;
+                  if (value > 1.0f) value = 1.0f;
+                  return value;
+
+  - id: dim_display
+    mode: restart
+    then:
+      - if:
+          condition:
+            switch.is_on: display_enabled
+          then:
+            - light.turn_on:
+                id: backlight
+                brightness: !lambda |-
+                  float pct = id(dim_brightness).state;
+                  if (id(night_mode).state && id(ha_time).now().is_valid()) {
+                    int h = id(ha_time).now().hour;
+                    int start = (int) id(night_start_hour).state;
+                    int end = (int) id(night_end_hour).state;
+                    bool night = start < end ? (h >= start && h < end) : (h >= start || h < end);
+                    if (start == end) night = true;
+                    if (night) pct = id(night_brightness).state;
+                  }
+                  float value = pct / 100.0f;
+                  if (value < 0.01f) value = 0.01f;
+                  if (value > 1.0f) value = 1.0f;
+                  return value;
+            - lambda: |-
+                id(display_dimmed) = true;
+
+  - id: refresh_distance_labels
+    mode: restart
+    then:
+      - lvgl.label.update:
+          id: row_1_distance_label
+          text: !lambda |-
+            float km = id(row_1_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: row_2_distance_label
+          text: !lambda |-
+            float km = id(row_2_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: row_3_distance_label
+          text: !lambda |-
+            float km = id(row_3_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: row_4_distance_label
+          text: !lambda |-
+            float km = id(row_4_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: row_5_distance_label
+          text: !lambda |-
+            float km = id(row_5_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: row_6_distance_label
+          text: !lambda |-
+            float km = id(row_6_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: nearest_distance_label
+          text: !lambda |-
+            float km = id(nearest_distance_km).state;
+            if (isnan(km)) km = 0;
+            char buf[24];
+            std::string unit = id(distance_unit).current_option();
+            if (unit == "Nautical Miles") {
+              snprintf(buf, sizeof(buf), "%.1f nm", km * 0.5399568f);
+            } else if (unit == "Kilometers") {
+              snprintf(buf, sizeof(buf), "%.1f km", km);
+            } else {
+              snprintf(buf, sizeof(buf), "%.1f mi", km * 0.6213712f);
+            }
+            return std::string(buf);
+
+  - id: refresh_nearest_metrics
+    mode: restart
+    then:
+      - lvgl.label.update:
+          id: nearest_altitude_label
+          text: !lambda |-
+            float ft = id(nearest_altitude_ft).state;
+            if (isnan(ft)) ft = 0;
+            char buf[24];
+            if (id(altitude_unit).current_option() == "Meters") {
+              snprintf(buf, sizeof(buf), "%.0f m", ft * 0.3048f);
+            } else {
+              snprintf(buf, sizeof(buf), "%.0f ft", ft);
+            }
+            return std::string(buf);
+      - lvgl.label.update:
+          id: nearest_speed_label
+          text: !lambda |-
+            float kt = id(nearest_speed_kt).state;
+            if (isnan(kt)) kt = 0;
+            char buf[24];
+            std::string unit = id(speed_unit).current_option();
+            if (unit == "MPH") {
+              snprintf(buf, sizeof(buf), "%.0f mph", kt * 1.150779f);
+            } else if (unit == "KMH") {
+              snprintf(buf, sizeof(buf), "%.0f km/h", kt * 1.852f);
+            } else {
+              snprintf(buf, sizeof(buf), "%.0f kt", kt);
+            }
+            return std::string(buf);
+
+  - id: apply_table_font
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(table_font_size).current_option() == "Tiny";'
+          then:
+            - lvgl.label.update:
+                id:
+                  - row_1_flight_label
+                  - row_1_type_label
+                  - row_1_route_label
+                  - row_1_distance_label
+                  - row_2_flight_label
+                  - row_2_type_label
+                  - row_2_route_label
+                  - row_2_distance_label
+                  - row_3_flight_label
+                  - row_3_type_label
+                  - row_3_route_label
+                  - row_3_distance_label
+                  - row_4_flight_label
+                  - row_4_type_label
+                  - row_4_route_label
+                  - row_4_distance_label
+                  - row_5_flight_label
+                  - row_5_type_label
+                  - row_5_route_label
+                  - row_5_distance_label
+                  - row_6_flight_label
+                  - row_6_type_label
+                  - row_6_route_label
+                  - row_6_distance_label
+                text_font: montserrat_8
+      - if:
+          condition:
+            lambda: 'return id(table_font_size).current_option() == "Small";'
+          then:
+            - lvgl.label.update:
+                id:
+                  - row_1_flight_label
+                  - row_1_type_label
+                  - row_1_route_label
+                  - row_1_distance_label
+                  - row_2_flight_label
+                  - row_2_type_label
+                  - row_2_route_label
+                  - row_2_distance_label
+                  - row_3_flight_label
+                  - row_3_type_label
+                  - row_3_route_label
+                  - row_3_distance_label
+                  - row_4_flight_label
+                  - row_4_type_label
+                  - row_4_route_label
+                  - row_4_distance_label
+                  - row_5_flight_label
+                  - row_5_type_label
+                  - row_5_route_label
+                  - row_5_distance_label
+                  - row_6_flight_label
+                  - row_6_type_label
+                  - row_6_route_label
+                  - row_6_distance_label
+                text_font: montserrat_10
+      - if:
+          condition:
+            lambda: 'return id(table_font_size).current_option() == "Medium";'
+          then:
+            - lvgl.label.update:
+                id:
+                  - row_1_flight_label
+                  - row_1_type_label
+                  - row_1_route_label
+                  - row_1_distance_label
+                  - row_2_flight_label
+                  - row_2_type_label
+                  - row_2_route_label
+                  - row_2_distance_label
+                  - row_3_flight_label
+                  - row_3_type_label
+                  - row_3_route_label
+                  - row_3_distance_label
+                  - row_4_flight_label
+                  - row_4_type_label
+                  - row_4_route_label
+                  - row_4_distance_label
+                  - row_5_flight_label
+                  - row_5_type_label
+                  - row_5_route_label
+                  - row_5_distance_label
+                  - row_6_flight_label
+                  - row_6_type_label
+                  - row_6_route_label
+                  - row_6_distance_label
+                text_font: montserrat_12
+
+  - id: apply_accent_theme
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(accent_theme).current_option() == "Neutral";'
+          then:
+            - lvgl.style.update:
+                id: accent_text_style
+                text_color: 0xF3F4F6
+      - if:
+          condition:
+            lambda: 'return id(accent_theme).current_option() == "Blue";'
+          then:
+            - lvgl.style.update:
+                id: accent_text_style
+                text_color: 0x3DA9FC
+      - if:
+          condition:
+            lambda: 'return id(accent_theme).current_option() == "Green";'
+          then:
+            - lvgl.style.update:
+                id: accent_text_style
+                text_color: 0x42D392
+      - if:
+          condition:
+            lambda: 'return id(accent_theme).current_option() == "Amber";'
+          then:
+            - lvgl.style.update:
+                id: accent_text_style
+                text_color: 0xF6C453
+      - if:
+          condition:
+            lambda: 'return id(accent_theme).current_option() == "Red";'
+          then:
+            - lvgl.style.update:
+                id: accent_text_style
+                text_color: 0xF87171
+
+  - id: apply_surface_theme
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(surface_theme).current_option() == "Black";'
+          then:
+            - lvgl.update:
+                bottom_layer:
+                  bg_color: 0x050607
+                  bg_opa: COVER
+            - lvgl.style.update:
+                id: row_style
+                bg_color: 0x111315
+            - lvgl.style.update:
+                id: panel_style
+                bg_color: 0x101214
+      - if:
+          condition:
+            lambda: 'return id(surface_theme).current_option() == "Charcoal";'
+          then:
+            - lvgl.update:
+                bottom_layer:
+                  bg_color: 0x0C0E10
+                  bg_opa: COVER
+            - lvgl.style.update:
+                id: row_style
+                bg_color: 0x171A1D
+            - lvgl.style.update:
+                id: panel_style
+                bg_color: 0x15181B
+      - if:
+          condition:
+            lambda: 'return id(surface_theme).current_option() == "Slate";'
+          then:
+            - lvgl.update:
+                bottom_layer:
+                  bg_color: 0x101820
+                  bg_opa: COVER
+            - lvgl.style.update:
+                id: row_style
+                bg_color: 0x17222C
+            - lvgl.style.update:
+                id: panel_style
+                bg_color: 0x151F28
+
+  - id: apply_visibility
+    mode: restart
+    then:
+      - if:
+          condition:
+            switch.is_on: show_column_header
+          then:
+            - lvgl.widget.show:
+                - flight_header_label
+                - type_header_label
+                - route_header_label
+                - distance_header_label
+          else:
+            - lvgl.widget.hide:
+                - flight_header_label
+                - type_header_label
+                - route_header_label
+                - distance_header_label
+
+      - if:
+          condition:
+            switch.is_on: show_aircraft_count
+          then:
+            - lvgl.widget.show: aircraft_count_label
+          else:
+            - lvgl.widget.hide: aircraft_count_label
+
+      - if:
+          condition:
+            switch.is_on: show_type
+          then:
+            - lvgl.widget.show:
+                - type_header_label
+                - row_1_type_label
+                - row_2_type_label
+                - row_3_type_label
+                - row_4_type_label
+                - row_5_type_label
+                - row_6_type_label
+          else:
+            - lvgl.widget.hide:
+                - type_header_label
+                - row_1_type_label
+                - row_2_type_label
+                - row_3_type_label
+                - row_4_type_label
+                - row_5_type_label
+                - row_6_type_label
+
+      - if:
+          condition:
+            switch.is_on: show_route
+          then:
+            - lvgl.widget.show:
+                - route_header_label
+                - row_1_route_label
+                - row_2_route_label
+                - row_3_route_label
+                - row_4_route_label
+                - row_5_route_label
+                - row_6_route_label
+          else:
+            - lvgl.widget.hide:
+                - route_header_label
+                - row_1_route_label
+                - row_2_route_label
+                - row_3_route_label
+                - row_4_route_label
+                - row_5_route_label
+                - row_6_route_label
+
+      - if:
+          condition:
+            switch.is_on: show_distance
+          then:
+            - lvgl.widget.show:
+                - distance_header_label
+                - row_1_distance_label
+                - row_2_distance_label
+                - row_3_distance_label
+                - row_4_distance_label
+                - row_5_distance_label
+                - row_6_distance_label
+          else:
+            - lvgl.widget.hide:
+                - distance_header_label
+                - row_1_distance_label
+                - row_2_distance_label
+                - row_3_distance_label
+                - row_4_distance_label
+                - row_5_distance_label
+                - row_6_distance_label
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 1;'
+          then:
+            - lvgl.widget.show: row_1_container
+          else:
+            - lvgl.widget.hide: row_1_container
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 2;'
+          then:
+            - lvgl.widget.show: row_2_container
+          else:
+            - lvgl.widget.hide: row_2_container
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 3;'
+          then:
+            - lvgl.widget.show: row_3_container
+          else:
+            - lvgl.widget.hide: row_3_container
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 4;'
+          then:
+            - lvgl.widget.show: row_4_container
+          else:
+            - lvgl.widget.hide: row_4_container
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 5;'
+          then:
+            - lvgl.widget.show: row_5_container
+          else:
+            - lvgl.widget.hide: row_5_container
+
+      - if:
+          condition:
+            lambda: 'return id(nearby_rows).state >= 6;'
+          then:
+            - lvgl.widget.show: row_6_container
+          else:
+            - lvgl.widget.hide: row_6_container
+
+  - id: show_default_page
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(default_page).current_option() == "Nearest";'
+          then:
+            - select.set:
+                id: current_page
+                option: "Nearest"
+          else:
+            - select.set:
+                id: current_page
+                option: "Nearby"
+
+  - id: next_page
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(current_page).current_option() == "Nearby";'
+          then:
+            - select.set:
+                id: current_page
+                option: "Nearest"
+          else:
+            - select.set:
+                id: current_page
+                option: "Nearby"
+
+
+lvgl:
+  rotation: 90
+  displays:
+    - cyd_display
+  touchscreens:
+    - touchscreen_id: cyd_touch
+  buffer_size: 25%
+  default_font: montserrat_10
+  page_wrap: true
+
+  bottom_layer:
+    bg_color: 0x050607
+    bg_opa: COVER
+
+  style_definitions:
+    - id: row_style
+      bg_color: 0x111315
+      bg_opa: COVER
+
+    - id: panel_style
+      bg_color: 0x101214
+      bg_opa: COVER
+      border_color: 0x2A2F35
+      border_width: 1
+      radius: 6
+
+    - id: muted_text_style
+      text_color: 0x89929C
+
+    - id: accent_text_style
+      text_color: 0x3DA9FC
+
+  pages:
+    - id: splash_page
+      bg_color: 0x050607
+      scrollbar_mode: "OFF"
+      scrollable: false
+      widgets:
+        # Tap anywhere to skip the splash screen.
+        - button:
+            x: 0
+            y: 0
+            width: 320
+            height: 240
+            bg_opa: TRANSP
+            border_width: 0
+            radius: 0
+            pad_all: 0
+            on_short_click:
+              - script.execute: show_default_page
+
+        - label:
+            align: CENTER
+            y: -18
+            width: 304
+            text_align: CENTER
+            text: "CYD Flight Tracker"
+            text_font: montserrat_28
+            text_color: 0xF3F4F6
+
+        - label:
+            align: CENTER
+            y: 26
+            width: 304
+            text_align: CENTER
+            text: "Dev. By Fabricio Zambroni"
+            text_font: montserrat_12
+            text_color: 0x89929C
+
+        - obj:
+            align: CENTER
+            y: 62
+            width: 64
+            height: 2
+            bg_color: 0x3DA9FC
+            border_width: 0
+            radius: 1
+            pad_all: 0
+
+    - id: nearby_page
+      bg_opa: TRANSP
+      scrollbar_mode: "OFF"
+      scrollable: false
+      widgets:
+        - button:
+            id: nearby_page_touch
+            x: 0
+            y: 0
+            width: 320
+            height: 240
+            bg_opa: TRANSP
+            border_width: 0
+            radius: 0
+            pad_all: 0
+            on_short_click:
+              - select.set:
+                  id: current_page
+                  option: "Nearest"
+
+        - label:
+            x: 8
+            y: 5
+            text: "NEARBY FLIGHTS"
+            text_font: montserrat_16
+            text_color: 0xF3F4F6
+
+        - label:
+            id: aircraft_count_label
+            x: 244
+            y: 7
+            width: 68
+            text_align: RIGHT
+            text: "--"
+            text_font: montserrat_12
+            styles: accent_text_style
+
+        - label:
+            id: flight_header_label
+            x: 12
+            y: 29
+            width: 68
+            text: "FLIGHT"
+            text_font: montserrat_8
+            styles: muted_text_style
+
+        - label:
+            id: type_header_label
+            x: 84
+            y: 29
+            width: 50
+            text: "TYPE"
+            text_font: montserrat_8
+            styles: muted_text_style
+
+        - label:
+            id: route_header_label
+            x: 138
+            y: 29
+            width: 98
+            text: "ROUTE"
+            text_font: montserrat_8
+            styles: muted_text_style
+
+        - label:
+            id: distance_header_label
+            x: 240
+            y: 29
+            width: 68
+            text_align: RIGHT
+            text: "DIST"
+            text_font: montserrat_8
+            styles: muted_text_style
+
+        - obj:
+            id: row_1_container
+            x: 8
+            y: 44
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_1_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_1_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_1_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_1_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+        - obj:
+            id: row_2_container
+            x: 8
+            y: 68
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_2_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_2_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_2_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_2_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+        - obj:
+            id: row_3_container
+            x: 8
+            y: 92
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_3_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_3_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_3_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_3_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+        - obj:
+            id: row_4_container
+            x: 8
+            y: 116
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_4_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_4_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_4_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_4_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+        - obj:
+            id: row_5_container
+            x: 8
+            y: 140
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_5_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_5_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_5_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_5_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+        - obj:
+            id: row_6_container
+            x: 8
+            y: 164
+            width: 304
+            height: 22
+            styles: row_style
+            radius: 4
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: row_6_flight_label
+                  x: 5
+                  y: 5
+                  width: 68
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+              - label:
+                  id: row_6_type_label
+                  x: 76
+                  y: 5
+                  width: 50
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_6_route_label
+                  x: 130
+                  y: 5
+                  width: 98
+                  text: "--->---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: CLIP
+              - label:
+                  id: row_6_distance_label
+                  x: 232
+                  y: 5
+                  width: 66
+                  text_align: RIGHT
+                  text: "--"
+                  text_font: montserrat_10
+                  text_color: 0xAEB6BF
+                  long_mode: CLIP
+
+
+
+
+    - id: nearest_page
+      bg_opa: TRANSP
+      scrollbar_mode: "OFF"
+      scrollable: false
+      widgets:
+        - button:
+            id: nearest_page_touch
+            x: 0
+            y: 0
+            width: 320
+            height: 240
+            bg_opa: TRANSP
+            border_width: 0
+            radius: 0
+            pad_all: 0
+            on_short_click:
+              - select.set:
+                  id: current_page
+                  option: "Nearby"
+
+        - label:
+            x: 8
+            y: 5
+            text: "NEAREST AIRCRAFT"
+            text_font: montserrat_16
+            text_color: 0xF3F4F6
+
+        - obj:
+            x: 8
+            y: 31
+            width: 304
+            height: 166
+            styles: panel_style
+            pad_all: 0
+            scrollable: false
+            scrollbar_mode: "OFF"
+            widgets:
+              - label:
+                  id: nearest_flight_label
+                  x: 12
+                  y: 12
+                  width: 280
+                  text: "---"
+                  text_font: montserrat_18
+                  styles: accent_text_style
+                  long_mode: DOT
+
+              - label:
+                  id: nearest_type_label
+                  x: 12
+                  y: 38
+                  width: 280
+                  text: "---"
+                  text_font: montserrat_10
+                  text_color: 0xD1D5DB
+                  long_mode: DOT
+
+              - label:
+                  id: nearest_route_label
+                  x: 12
+                  y: 59
+                  width: 280
+                  text: "--->---"
+                  text_font: montserrat_14
+                  text_color: 0xF3F4F6
+                  long_mode: CLIP
+
+              - label:
+                  x: 12
+                  y: 91
+                  text: "DISTANCE"
+                  text_font: montserrat_8
+                  styles: muted_text_style
+
+              - label:
+                  id: nearest_distance_label
+                  x: 12
+                  y: 105
+                  width: 80
+                  text: "--"
+                  text_font: montserrat_12
+                  text_color: 0xF3F4F6
+
+              - label:
+                  x: 111
+                  y: 91
+                  text: "ALTITUDE"
+                  text_font: montserrat_8
+                  styles: muted_text_style
+
+              - label:
+                  id: nearest_altitude_label
+                  x: 111
+                  y: 105
+                  width: 80
+                  text: "--"
+                  text_font: montserrat_12
+                  text_color: 0xF3F4F6
+
+              - label:
+                  x: 210
+                  y: 91
+                  text: "SPEED"
+                  text_font: montserrat_8
+                  styles: muted_text_style
+
+              - label:
+                  id: nearest_speed_label
+                  x: 210
+                  y: 105
+                  width: 80
+                  text: "--"
+                  text_font: montserrat_12
+                  text_color: 0xF3F4F6
+
+
+
+
+
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(auto_dim).state || id(display_dimmed)) return false;
+              uint32_t timeout_ms = (uint32_t) (id(auto_dim_timeout).state * 1000.0f);
+              return millis() - id(last_touch_ms) >= timeout_ms;
+          then:
+            - script.execute: dim_display
+
+      - if:
+          condition:
+            switch.is_on: auto_cycle
+          then:
+            - lambda: |-
+                static uint32_t last_cycle = 0;
+                uint32_t interval_ms = (uint32_t) (id(auto_cycle_interval).state * 1000.0f);
+                if (interval_ms < 5000) interval_ms = 5000;
+                if (millis() - last_cycle >= interval_ms) {
+                  last_cycle = millis();
+                  id(next_page).execute();
+                }
+

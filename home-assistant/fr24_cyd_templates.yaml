@@ -1,0 +1,315 @@
+# ============================================================
+# Home Assistant templates for CYD Flight Tracker
+# Source: sensor.flightradar24_current_in_area
+# ============================================================
+
+template:
+  - sensor:
+      - name: "FR24 CYD Aircraft Count"
+        unique_id: fr24_cyd_aircraft_count
+        icon: mdi:airplane
+        state: >
+          {{ states('sensor.flightradar24_current_in_area') | int(0) }}
+
+      - name: "FR24 CYD Nearest Flight"
+        unique_id: fr24_cyd_nearest_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Nearest Type"
+        unique_id: fr24_cyd_nearest_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:18] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Nearest Route"
+        unique_id: fr24_cyd_nearest_route
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Nearest Distance KM"
+        unique_id: fr24_cyd_nearest_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[0].distance | float(0)) | round(2) if fs | count > 0 else 0 }}
+
+      - name: "FR24 CYD Nearest Altitude FT"
+        unique_id: fr24_cyd_nearest_altitude_ft
+        unit_of_measurement: "ft"
+        state_class: measurement
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[0].altitude | float(0)) | round(2) if fs | count > 0 else 0 }}
+
+      - name: "FR24 CYD Nearest Speed KT"
+        unique_id: fr24_cyd_nearest_speed_kt
+        unit_of_measurement: "kt"
+        state_class: measurement
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[0].ground_speed | float(0)) | round(2) if fs | count > 0 else 0 }}
+
+      - name: "FR24 CYD Row 1 Flight"
+        unique_id: fr24_cyd_row_1_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 1 Type"
+        unique_id: fr24_cyd_row_1_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 1 Route"
+        unique_id: fr24_cyd_row_1_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 0 %}
+            {% set f = fs[0] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 1 Distance KM"
+        unique_id: fr24_cyd_row_1_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[0].distance | float(0)) | round(2) if fs | count > 0 else 0 }}
+
+      - name: "FR24 CYD Row 2 Flight"
+        unique_id: fr24_cyd_row_2_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 1 %}
+            {% set f = fs[1] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 2 Type"
+        unique_id: fr24_cyd_row_2_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 1 %}
+            {% set f = fs[1] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 2 Route"
+        unique_id: fr24_cyd_row_2_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 1 %}
+            {% set f = fs[1] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 2 Distance KM"
+        unique_id: fr24_cyd_row_2_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[1].distance | float(0)) | round(2) if fs | count > 1 else 0 }}
+
+      - name: "FR24 CYD Row 3 Flight"
+        unique_id: fr24_cyd_row_3_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 2 %}
+            {% set f = fs[2] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 3 Type"
+        unique_id: fr24_cyd_row_3_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 2 %}
+            {% set f = fs[2] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 3 Route"
+        unique_id: fr24_cyd_row_3_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 2 %}
+            {% set f = fs[2] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 3 Distance KM"
+        unique_id: fr24_cyd_row_3_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[2].distance | float(0)) | round(2) if fs | count > 2 else 0 }}
+
+      - name: "FR24 CYD Row 4 Flight"
+        unique_id: fr24_cyd_row_4_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 3 %}
+            {% set f = fs[3] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 4 Type"
+        unique_id: fr24_cyd_row_4_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 3 %}
+            {% set f = fs[3] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 4 Route"
+        unique_id: fr24_cyd_row_4_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 3 %}
+            {% set f = fs[3] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 4 Distance KM"
+        unique_id: fr24_cyd_row_4_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[3].distance | float(0)) | round(2) if fs | count > 3 else 0 }}
+
+      - name: "FR24 CYD Row 5 Flight"
+        unique_id: fr24_cyd_row_5_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 4 %}
+            {% set f = fs[4] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 5 Type"
+        unique_id: fr24_cyd_row_5_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 4 %}
+            {% set f = fs[4] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 5 Route"
+        unique_id: fr24_cyd_row_5_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 4 %}
+            {% set f = fs[4] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 5 Distance KM"
+        unique_id: fr24_cyd_row_5_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[4].distance | float(0)) | round(2) if fs | count > 4 else 0 }}
+
+      - name: "FR24 CYD Row 6 Flight"
+        unique_id: fr24_cyd_row_6_flight
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 5 %}
+            {% set f = fs[5] %}
+            {{ (f.flight_number | default(f.callsign, true) | default(f.aircraft_registration, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 6 Type"
+        unique_id: fr24_cyd_row_6_type
+        icon: mdi:airplane
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 5 %}
+            {% set f = fs[5] %}
+            {{ (f.aircraft_code | default(f.aircraft_model, true) | default('---', true))[:10] }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 6 Route"
+        unique_id: fr24_cyd_row_6_route
+        icon: mdi:map-marker-path
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {% if fs | count > 5 %}
+            {% set f = fs[5] %}
+            {% set o = f.airport_origin_code_iata | default('---', true) %}
+            {% set d = f.airport_destination_code_iata | default('---', true) %}
+            {{ o }}>{{ d }}
+          {% else %}---{% endif %}
+
+      - name: "FR24 CYD Row 6 Distance KM"
+        unique_id: fr24_cyd_row_6_distance_km
+        unit_of_measurement: "km"
+        state_class: measurement
+        device_class: distance
+        state: >
+          {% set fs = state_attr('sensor.flightradar24_current_in_area', 'flights') | default([], true) | sort(attribute='distance') | list %}
+          {{ (fs[5].distance | float(0)) | round(2) if fs | count > 5 else 0 }}

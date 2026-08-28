@@ -1,0 +1,23 @@
+# ESPHome secrets and generated output
+secrets.yaml
+.esphome/
+build/
+*.bin
+*.elf
+*.map
+
+# Home Assistant local/runtime data
+.storage/
+home-assistant_v2.db*
+*.log
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archives
+*.zip
+
