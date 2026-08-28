@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented here. The format follows Keep a Changelog, and the project intends to use Semantic Versioning.
 
+## [0.1.4] - 2026-08-28
+
+### Added
+
+- Added a `Large` 14 px table-font preset alongside Tiny, Small, and Medium.
+
+### Changed
+
+- Restored persistent display orientation. The last selected 0° or 180° landscape orientation now survives a restart.
+
+## [0.1.3] - 2026-08-28
+
+### Fixed
+
+- Explicitly forced the ILI9342 address window to 320x240 with zero offsets and padding.
+- Disabled restoration of the obsolete 90-degree orientation preference so boot consistently uses the native landscape viewport.
+- Added a one-pixel-inset 318x238 frame to the Nearby and Nearest pages so all four border lines remain inside the drawable area.
+
 ## [0.1.2] - 2026-08-28
 
 ### Fixed

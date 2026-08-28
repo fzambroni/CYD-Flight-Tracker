@@ -83,6 +83,14 @@ display:
     # so the LVGL base rotation must remain 0 for the landscape layout below.
     model: ESP32-2432S028-9342
     spi_id: tft_spi
+    # Force the full native address window instead of relying on model metadata.
+    dimensions:
+      width: 320
+      height: 240
+      offset_width: 0
+      offset_height: 0
+      pad_width: 0
+      pad_height: 0
     color_order: RGB
     invert_colors: false
     color_depth: 16
@@ -255,6 +263,8 @@ select:
     options: ["0", "180"]
     initial_option: "0"
     optimistic: true
+    # Only landscape-safe values are available, so the last selection can be
+    # restored without reintroducing the former 90-degree viewport problem.
     restore_value: true
     entity_category: config
     on_value:
@@ -321,7 +331,7 @@ select:
     name: "Table Font Size"
     id: table_font_size
     icon: mdi:format-size
-    options: ["Tiny", "Small", "Medium"]
+    options: ["Tiny", "Small", "Medium", "Large"]
     initial_option: "Small"
     optimistic: true
     restore_value: true
@@ -1053,6 +1063,37 @@ script:
                   - row_6_route_label
                   - row_6_distance_label
                 text_font: montserrat_12
+      - if:
+          condition:
+            lambda: 'return id(table_font_size).current_option() == "Large";'
+          then:
+            - lvgl.label.update:
+                id:
+                  - row_1_flight_label
+                  - row_1_type_label
+                  - row_1_route_label
+                  - row_1_distance_label
+                  - row_2_flight_label
+                  - row_2_type_label
+                  - row_2_route_label
+                  - row_2_distance_label
+                  - row_3_flight_label
+                  - row_3_type_label
+                  - row_3_route_label
+                  - row_3_distance_label
+                  - row_4_flight_label
+                  - row_4_type_label
+                  - row_4_route_label
+                  - row_4_distance_label
+                  - row_5_flight_label
+                  - row_5_type_label
+                  - row_5_route_label
+                  - row_5_distance_label
+                  - row_6_flight_label
+                  - row_6_type_label
+                  - row_6_route_label
+                  - row_6_distance_label
+                text_font: montserrat_14
 
   - id: apply_accent_theme
     mode: restart
@@ -1410,6 +1451,21 @@ lvgl:
               - select.set:
                   id: current_page
                   option: "Nearest"
+
+        # One-pixel inset keeps every side of the frame inside the viewport.
+        - obj:
+            x: 1
+            y: 1
+            width: 318
+            height: 238
+            bg_opa: TRANSP
+            border_color: 0x3DA9FC
+            border_width: 1
+            radius: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+            scrollbar_mode: "OFF"
 
         - label:
             x: 8
@@ -1788,6 +1844,21 @@ lvgl:
               - select.set:
                   id: current_page
                   option: "Nearby"
+
+        # One-pixel inset keeps every side of the frame inside the viewport.
+        - obj:
+            x: 1
+            y: 1
+            width: 318
+            height: 238
+            bg_opa: TRANSP
+            border_color: 0x3DA9FC
+            border_width: 1
+            radius: 0
+            pad_all: 0
+            clickable: false
+            scrollable: false
+            scrollbar_mode: "OFF"
 
         - label:
             x: 8

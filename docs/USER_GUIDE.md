@@ -27,7 +27,7 @@ These ESPHome entities are exposed to Home Assistant. Entity IDs normally use th
 | Display Orientation | Select | 0° or 180° (landscape) |
 | Default Page / Current Page | Select | Startup target and immediate navigation |
 | Accent Theme / Surface Theme | Select | Prepared color presets |
-| Table Font Size | Select | Tiny, Small, or Medium preset |
+| Table Font Size | Select | Tiny (8 px), Small (10 px), Medium (12 px), or Large (14 px) |
 | Distance / Altitude / Speed Unit | Select | Display conversion units |
 | Show Splash Screen | Switch | Enables the startup splash |
 | Display Enabled | Switch | Enables/disables the display |
@@ -51,7 +51,7 @@ The following changes require validation, compilation, and installation:
 - adding fonts, themes, pages, widgets, sensors, or new behavior
 - changing the hard-coded splash text or developer credit
 
-Orientation remains runtime-configurable between the two landscape directions, 0° and 180°. Portrait orientations are intentionally excluded because this interface uses fixed 320x240 widget geometry and does not contain a responsive portrait layout.
+Orientation remains runtime-configurable between the two landscape directions, 0° and 180°, and the last selection is restored after reboot. Portrait orientations are excluded because this interface uses fixed 320x240 widget geometry and does not contain a responsive portrait layout.
 
 ## Suggested Home Assistant dashboard
 
